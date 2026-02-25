@@ -1,0 +1,47 @@
+name: CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 'Login to Azure'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Deploy infra (Bicep)'
+        env:
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          az group create -n $AZURE_RESOURCE_GROUP -l ${{ secrets.AZURE_LOCATION }}
+          az deployment group create -g $AZURE_RESOURCE_GROUP --template-file infra/main.bicep --parameters webAppName=${{ secrets.AZURE_WEBAPP_NAME }} storageAccountName=${{ secrets.AZURE_STORAGE_ACCOUNT }} sqlServerName=${{ secrets.AZURE_SQL_SERVER_NAME }} sqlAdministratorLogin=${{ secrets.AZURE_SQL_ADMIN_USER }} sqlAdministratorPassword=${{ secrets.AZURE_SQL_ADMIN_PASSWORD }} appInsightsName=${{ secrets.AZURE_APPINSIGHTS_NAME }} keyVaultName=${{ secrets.AZURE_KEYVAULT_NAME }}
+
+      - name: 'Build backend'
+        run: |
+          dotnet build ./backend/SurveyApi.csproj -c Release
+          dotnet publish ./backend/SurveyApi.csproj -c Release -o publish
+
+      - name: 'Deploy backend to App Service'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./backend/publish
+
+      - name: 'Build frontend'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: 'Deploy frontend to Storage account ($web)'
+        env:
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+          AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+        run: |
+          az storage blob upload-batch -s frontend/dist -d '$web' --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY

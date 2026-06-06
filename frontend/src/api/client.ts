@@ -66,10 +66,9 @@ apiClient.interceptors.response.use(
       console.error('Network error — API may be unreachable');
     }
     if (error.response?.status === 401) {
-      console.warn('API returned 401 — token may be invalid or expired');
-      if (loginRedirect) {
-        loginRedirect();
-      }
+      // Don't auto-redirect — the request interceptor already handled token acquisition.
+      // A 401 here means the token was sent but rejected by the backend (e.g. audience mismatch).
+      console.warn('API returned 401 — token was sent but backend rejected it. Check audience/issuer config.');
     }
     return Promise.reject(error);
   }

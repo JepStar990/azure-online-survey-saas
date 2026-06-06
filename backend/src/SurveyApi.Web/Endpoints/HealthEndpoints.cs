@@ -38,5 +38,15 @@ public static class HealthEndpoints
         })
         .AllowAnonymous()
         .WithTags("Health");
+
+        // Diagnostic: check if seed data exists (public, no auth)
+        group.MapGet("/health/seed", async (AppDbContext db) =>
+        {
+            var count = await db.Surveys.CountAsync();
+            var titles = await db.Surveys.Select(s => s.Title).ToListAsync();
+            return Results.Ok(new { surveyCount = count, titles });
+        })
+        .AllowAnonymous()
+        .WithTags("Health");
     }
 }

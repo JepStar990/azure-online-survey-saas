@@ -5,7 +5,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import { AppShell } from './components/layout/AppShell';
 import { RequireAuth } from './auth/RequireAuth';
 import { LoadingSpinner } from './components/shared/LoadingSpinner';
-import { setTokenGetter } from './api/client';
+import { setTokenGetter, setLoginRedirect } from './api/client';
 import { useAuth } from './auth/useAuth';
 
 // --- Lazy-loaded pages ---
@@ -34,10 +34,11 @@ const queryClient = new QueryClient({
  * Must be rendered inside AuthProvider so useAuth() works.
  */
 const TokenBridger: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { getAccessToken } = useAuth();
+  const { getAccessToken, login } = useAuth();
   React.useEffect(() => {
     setTokenGetter(getAccessToken);
-  }, [getAccessToken]);
+    setLoginRedirect(login);
+  }, [getAccessToken, login]);
   return <>{children}</>;
 };
 

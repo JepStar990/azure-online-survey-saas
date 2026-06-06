@@ -6,61 +6,70 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
  * In production, we point directly to the App Service URL.
  */
 const getBaseUrl = (): string => {
-  // If a full API URL is provided via env, use it directly (production)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // In development, use relative path — Vite proxy handles forwarding to backend
   return '/api/v1';
 };
 
-/**
- * Axios instance pre-configured with the API base URL and Bearer token interceptor.
- * The token is acquired from MSAL at request time via the onRequest callback.
- */
 export const apiClient = axios.create({
   baseURL: getBaseUrl(),
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-/**
- * Attach the Bearer token to every outgoing request.
- * The token getter is set by the app's auth initialization.
- */
+// --- Token management ---
+
 let tokenGetter: (() => Promise<string | null>) | null = null;
+let loginRedirect: (() => Promise<void>) | null = null;
 
 export function setTokenGetter(getter: () => Promise<string | null>) {
   tokenGetter = getter;
 }
 
+export function setLoginRedirect(fn: () => Promise<void>) {
+  loginRedirect = fn;
+}
+
+// --- Request interceptor: attach Bearer token, retry on failure ---
+
 apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   if (tokenGetter) {
-    const token = await tokenGetter();
+    // Try up to 3 times with increasing delays to let MSAL hydrate
+    let token: string | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise(r => setTimeout(r, 500 * attempt));
+      }
+      token = await tokenGetter();
+      if (token) break;
+    }
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (loginRedirect) {
+      // No token after retries — force re-login
+      console.warn('No access token available, redirecting to login');
+      await loginRedirect();
+      throw new axios.Cancel('Redirecting to login');
     }
   }
   return config;
 });
 
-/**
- * Handle common API errors uniformly.
- * Components can catch specific errors by checking error.response.status.
- */
+// --- Response interceptor: surface errors clearly ---
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
+    if (error.code === 'ERR_NETWORK') {
+      console.error('Network error — API may be unreachable');
+    }
     if (error.response?.status === 401) {
-      console.warn('API returned 401 Unauthorized');
-    }
-    if (error.response?.status === 403) {
-      console.warn('API returned 403 Forbidden — insufficient permissions');
-    }
-    if (error.response?.status === 429) {
-      console.warn('API returned 429 Too Many Requests — rate limited');
+      console.warn('API returned 401 — token may be invalid or expired');
+      if (loginRedirect) {
+        loginRedirect();
+      }
     }
     return Promise.reject(error);
   }

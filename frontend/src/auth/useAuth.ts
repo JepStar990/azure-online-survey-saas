@@ -13,7 +13,6 @@ export function useAuth() {
 
   /** Trigger Azure AD login redirect. Throws on failure so callers can show errors. */
   const login = async () => {
-    // loginRedirect navigates the browser away — if it throws, something is wrong
     await instance.loginRedirect({
       scopes: apiScopes,
       prompt: 'select_account',
@@ -28,21 +27,45 @@ export function useAuth() {
   };
 
   /**
-   * Acquire an access token silently, or prompt the user to re-authenticate if needed.
-   * Returns null if not authenticated.
+   * Acquire an access token silently. Tries multiple approaches:
+   * 1. Use the active account from MSAL React hooks
+   * 2. Fall back to getAllAccounts() if the hook account isn't ready
+   * 3. If interactive auth is required, redirect to login
+   *
+   * Returns null only if the user is truly not authenticated.
    */
   const getAccessToken = async (): Promise<string | null> => {
-    if (!account) return null;
+    // Try to get a valid account — use the hook account first, then fall back to cache
+    const activeAccount = account || instance.getAllAccounts()[0] || null;
+
+    if (!activeAccount) {
+      console.warn('No account found in MSAL cache — user needs to re-authenticate');
+      return null;
+    }
+
     try {
       const response = await instance.acquireTokenSilent({
         scopes: apiScopes,
-        account,
+        account: activeAccount,
       });
       return response.accessToken;
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {
-        // Token expired or needs re-authentication — redirect to login
-        await instance.acquireTokenRedirect({ scopes: apiScopes, account });
+        // Token expired, claims required, or consent needed — silently try to get a new one
+        console.warn('Interaction required, attempting to re-acquire token silently');
+        try {
+          // Try with forceRefresh to get a fresh token from the server
+          const response = await instance.acquireTokenSilent({
+            scopes: apiScopes,
+            account: activeAccount,
+            forceRefresh: true,
+          });
+          return response.accessToken;
+        } catch (retryError) {
+          console.error('Token re-acquisition failed, redirecting to login');
+          await login();
+          return null;
+        }
       }
       console.error('Token acquisition failed:', error);
       return null;

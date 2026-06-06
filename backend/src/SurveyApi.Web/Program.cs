@@ -77,7 +77,13 @@ try
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = builder.Configuration["AzureAd:Authority"],
+                ValidIssuers = new[]
+                {
+                    // Home tenant
+                    "https://login.microsoftonline.com/f36fb8ee-44de-4d52-b910-fa4826ae3110/v2.0",
+                    // Common endpoint for multi-tenant
+                    "https://login.microsoftonline.com/common/v2.0"
+                },
                 ValidAudience = builder.Configuration["AzureAd:Audience"]
             };
             options.MapInboundClaims = false; // Preserve original claim types from Azure AD

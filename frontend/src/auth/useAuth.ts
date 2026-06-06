@@ -7,31 +7,24 @@ import { apiScopes } from './msalConfig';
  * Wraps MSAL React hooks into a simplified interface for the rest of the app.
  */
 export function useAuth() {
-  const { instance, accounts } = useMsal();
+  const { instance, accounts, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const account = useAccount(accounts[0] || {});
 
-  /** Trigger Azure AD login flow. */
+  /** Trigger Azure AD login redirect. Throws on failure so callers can show errors. */
   const login = async () => {
-    try {
-      await instance.loginRedirect({
-        scopes: apiScopes,
-        prompt: 'select_account',
-      });
-    } catch (e) {
-      console.error('Login failed:', e);
-    }
+    // loginRedirect navigates the browser away — if it throws, something is wrong
+    await instance.loginRedirect({
+      scopes: apiScopes,
+      prompt: 'select_account',
+    });
   };
 
   /** Sign out and clear session. */
   const logout = async () => {
-    try {
-      await instance.logoutRedirect({
-        postLogoutRedirectUri: window.location.origin,
-      });
-    } catch (e) {
-      console.error('Logout failed:', e);
-    }
+    await instance.logoutRedirect({
+      postLogoutRedirectUri: window.location.origin,
+    });
   };
 
   /**
@@ -68,8 +61,12 @@ export function useAuth() {
   /** Extract roles from idTokenClaims. */
   const roles: string[] = (account?.idTokenClaims?.roles as string[]) ?? [];
 
+  /** Whether MSAL is currently processing a redirect or interaction. */
+  const isLoading = inProgress !== 'none';
+
   return {
     isAuthenticated,
+    isLoading,
     account,
     displayName,
     userId,

@@ -1,14 +1,25 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 /**
+ * Determine the API base URL based on the environment.
+ * In development, the Vite dev server proxies /api requests to the backend.
+ * In production, we point directly to the App Service URL.
+ */
+const getBaseUrl = (): string => {
+  // If a full API URL is provided via env, use it directly (production)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // In development, use relative path — Vite proxy handles forwarding to backend
+  return '/api/v1';
+};
+
+/**
  * Axios instance pre-configured with the API base URL and Bearer token interceptor.
- *
  * The token is acquired from MSAL at request time via the onRequest callback.
- * In a production scenario, you'd use a token cache and refresh logic.
- * For now, we rely on the Vite proxy (dev) or same-origin deployment (prod).
  */
 export const apiClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: getBaseUrl(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -43,7 +54,6 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid — could trigger a re-login here
       console.warn('API returned 401 Unauthorized');
     }
     if (error.response?.status === 403) {

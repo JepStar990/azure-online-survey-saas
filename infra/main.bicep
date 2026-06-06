@@ -4,7 +4,8 @@ param webAppName string
 param storageAccountName string
 param sqlServerName string
 param sqlAdministratorLogin string
-param sqlAdministratorPassword securestring
+@secure()
+param sqlAdministratorPassword string
 param sqlDatabaseName string = 'SurveyDb'
 param appInsightsName string
 param keyVaultName string
@@ -76,13 +77,13 @@ resource sqlServer 'Microsoft.Sql/servers@2022-11-01-preview' = {
   }
 }
 
-resource sqlDatabase 'Microsoft.Sql/servers/databases@2022-11-01-preview' = {
+resource sqlDatabase 'Microsoft.Sql/servers/databases@2021-11-01' = {
   parent: sqlServer
   name: sqlDatabaseName
-  properties: {
-    sku: {
-      name: 'Basic'
-    }
+  location: location
+  sku: {
+    name: 'Basic'
+    tier: 'Basic'
   }
 }
 
@@ -106,22 +107,25 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
       name: 'standard'
     }
     accessPolicies: []
-    enablePurgeProtection: false
+    enablePurgeProtection: true
+    enableSoftDelete: true
   }
 }
 
 // Store SQL connection string as a secret in Key Vault
 resource sqlConnSecret 'Microsoft.KeyVault/vaults/secrets@2019-09-01' = {
-  name: '${keyVault.name}/sql-connection-string'
+  parent: keyVault
+  name: 'sql-connection-string'
   properties: {
     value: 'Server=${sqlServer.properties.fullyQualifiedDomainName};Database=${sqlDatabaseName};User ID=${sqlAdministratorLogin};Password=${sqlAdministratorPassword};Encrypt=True;TrustServerCertificate=False;'
   }
-  dependsOn: [ keyVault, sqlDatabase ]
+  dependsOn: [ sqlDatabase ]
 }
 
 // Grant web app's system-assigned identity access to read secrets from Key Vault
 resource keyVaultAccess 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = {
-  name: '${keyVault.name}/add'
+  parent: keyVault
+  name: 'add'
   properties: {
     accessPolicies: [
       {
@@ -133,7 +137,6 @@ resource keyVaultAccess 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = 
       }
     ]
   }
-  dependsOn: [ keyVault, webApp ]
 }
 
 output webAppDefaultHostName string = webApp.properties.defaultHostName

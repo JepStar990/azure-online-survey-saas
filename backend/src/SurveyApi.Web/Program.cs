@@ -96,9 +96,9 @@ try
 
     builder.Services.AddAuthorization(options =>
     {
-        // Policies require authenticated users. Role-based enforcement (TenantAdmin,
-        // SurveyCreator, SurveyViewer) will be activated in Phase 2 once Azure AD
-        // app roles are fully configured and the roles claim flows into tokens.
+        // Any authenticated user with a valid Azure AD token is authorized.
+        // Role-based enforcement (TenantAdmin/SurveyCreator/SurveyViewer)
+        // will be activated in Phase 2 once app roles flow into tokens.
         options.AddPolicy("RequireSurveyCreator", policy =>
             policy.RequireAuthenticatedUser());
         options.AddPolicy("RequireTenantAdmin", policy =>
@@ -158,12 +158,19 @@ try
     app.MapResponseEndpoints();
     app.MapAnalyticsEndpoints();
 
-    // --- Run database migrations in development ---
-    if (app.Environment.IsDevelopment())
+    // --- Initialize database and seed demo data ---
+    try
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SurveyApi.Infrastructure.Data.AppDbContext>();
         await db.Database.EnsureCreatedAsync();
+        await SurveyApi.Infrastructure.Data.SeedData.EnsureSeedDataAsync(db);
+    }
+    catch (Exception ex)
+    {
+        // Log but don't crash — DB seeding is non-critical
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "Database initialization or seeding failed. App will continue without seed data.");
     }
 
     app.Run();

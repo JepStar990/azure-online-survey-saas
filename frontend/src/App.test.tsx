@@ -1,23 +1,34 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
-import App from './App'
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import App from './App';
+
+// Mock MSAL to avoid actual auth interactions in tests
+vi.mock('@azure/msal-react', () => ({
+  MsalProvider: ({ children }: any) => children,
+  useMsal: () => ({
+    instance: {
+      loginRedirect: vi.fn(),
+      logoutRedirect: vi.fn(),
+      acquireTokenSilent: vi.fn().mockResolvedValue({ accessToken: 'test-token' }),
+    },
+    accounts: [],
+  }),
+  useIsAuthenticated: () => false,
+  useAccount: () => null,
+  AuthenticatedTemplate: ({ children }: any) => null,
+  UnauthenticatedTemplate: ({ children }: any) => children,
+}));
+
+// Mock BrowserRouter to avoid navigation errors in JSDOM
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return { ...actual };
+});
 
 describe('App', () => {
-  beforeEach(() => {
-    vi.stubGlobal('fetch', async (input: any) => {
-      if (typeof input === 'string' && input.endsWith('/api/health')) {
-        return { ok: true, json: async () => ({ status: 'Healthy' }) } as any
-      }
-      if (typeof input === 'string' && input.endsWith('/api/surveys')) {
-        return { ok: true, json: async () => ([{ id: 1, title: 'Customer Satisfaction' }]) } as any
-      }
-      return { ok: false } as any
-    })
-  })
-
-  it('renders health and surveys', async () => {
-    render(<App />)
-    await waitFor(() => expect(screen.getByText(/Backend:/)).toBeInTheDocument())
-    expect(screen.getByText(/Customer Satisfaction/)).toBeInTheDocument()
-  })
-})
+  it('renders login page when unauthenticated', async () => {
+    render(<App />);
+    // Should show the login page since we're not authenticated
+    expect(await screen.findByText(/SurveySaaS/i)).toBeDefined();
+  });
+});

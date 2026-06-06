@@ -1,12 +1,16 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Azure Online Survey</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://login.microsoftonline.com; img-src 'self' data:;" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <title>SurveySaaS — Azure AD-Integrated Online Surveys</title>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>You need to enable JavaScript to run this application.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

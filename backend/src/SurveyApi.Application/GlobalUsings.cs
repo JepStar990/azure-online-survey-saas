@@ -1,0 +1,10 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using FluentValidation;
+global using Microsoft.Extensions.DependencyInjection;
+global using SurveyApi.Domain.Entities;
+global using SurveyApi.Domain.Enums;
+global using SurveyApi.Domain.ValueObjects;

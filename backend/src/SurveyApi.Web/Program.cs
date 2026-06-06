@@ -84,7 +84,12 @@ try
                     // Common endpoint for multi-tenant
                     "https://login.microsoftonline.com/common/v2.0"
                 },
-                ValidAudience = builder.Configuration["AzureAd:Audience"]
+                ValidAudiences = new[]
+                {
+                    builder.Configuration["AzureAd:Audience"] ?? string.Empty,
+                    // Azure AD v2 sometimes uses raw client ID as aud claim
+                    builder.Configuration["AzureAd:ClientId"] ?? string.Empty
+                }
             };
             options.MapInboundClaims = false; // Preserve original claim types from Azure AD
         });

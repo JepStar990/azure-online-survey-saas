@@ -36,7 +36,7 @@ public static class SurveyEndpoints
             var result = await service.GetSurveysAsync(page, pageSize, statusFilter, ct);
             return Results.Ok(result);
         })
-        .RequireAuthorization("RequireSurveyViewer")
+        .RequireAuthorization()
         .WithSummary("List surveys");
 
         // --- GET: Single survey by ID ---
@@ -48,7 +48,7 @@ public static class SurveyEndpoints
             var survey = await service.GetByIdAsync(id, ct);
             return survey is not null ? Results.Ok(survey) : Results.NotFound();
         })
-        .RequireAuthorization("RequireSurveyViewer")
+        .RequireAuthorization()
         .WithSummary("Get survey by ID");
 
         // --- POST: Create a new survey ---
@@ -70,7 +70,7 @@ public static class SurveyEndpoints
             var survey = await service.CreateAsync(request, userId.Value, ct);
             return Results.Created($"/api/v1/surveys/{survey.Id}", survey);
         })
-        .RequireAuthorization("RequireSurveyCreator")
+        .RequireAuthorization()
         .WithSummary("Create a new survey");
 
         // --- PUT: Update an existing survey ---
@@ -94,7 +94,7 @@ public static class SurveyEndpoints
             var updated = await service.UpdateAsync(id, request, ct);
             return updated is not null ? Results.Ok(updated) : Results.NotFound();
         })
-        .RequireAuthorization("RequireSurveyCreator")
+        .RequireAuthorization()
         .WithSummary("Update a survey");
 
         // --- DELETE: Delete a survey ---
@@ -106,7 +106,7 @@ public static class SurveyEndpoints
             var deleted = await service.DeleteAsync(id, ct);
             return deleted ? Results.NoContent() : Results.NotFound();
         })
-        .RequireAuthorization("RequireSurveyCreator")
+        .RequireAuthorization()
         .WithSummary("Delete a survey");
 
         // --- POST: Publish a survey ---
@@ -125,7 +125,7 @@ public static class SurveyEndpoints
                 return Results.BadRequest(new { error = ex.Message });
             }
         })
-        .RequireAuthorization("RequireSurveyCreator")
+        .RequireAuthorization()
         .WithSummary("Publish a survey");
 
         // --- POST: Close a survey ---
@@ -137,7 +137,7 @@ public static class SurveyEndpoints
             var closed = await service.CloseAsync(id, ct);
             return closed is not null ? Results.Ok(closed) : Results.NotFound();
         })
-        .RequireAuthorization("RequireSurveyCreator")
+        .RequireAuthorization()
         .WithSummary("Close a survey");
     }
 }

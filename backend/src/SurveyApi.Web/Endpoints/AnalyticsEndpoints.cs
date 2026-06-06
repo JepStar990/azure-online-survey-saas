@@ -10,7 +10,7 @@ public static class AnalyticsEndpoints
     public static void MapAnalyticsEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/surveys/{surveyId:guid}/analytics")
-            .RequireAuthorization("RequireSurveyViewer")
+            .RequireAuthorization()
             .WithTags("Analytics");
 
         // GET: Summary analytics for a survey

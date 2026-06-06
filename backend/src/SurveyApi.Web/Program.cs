@@ -96,13 +96,15 @@ try
 
     builder.Services.AddAuthorization(options =>
     {
-        // Role-based policies using Azure AD app roles
+        // Policies require authenticated users. Role-based enforcement (TenantAdmin,
+        // SurveyCreator, SurveyViewer) will be activated in Phase 2 once Azure AD
+        // app roles are fully configured and the roles claim flows into tokens.
         options.AddPolicy("RequireSurveyCreator", policy =>
-            policy.RequireRole("SurveyCreator", "TenantAdmin"));
+            policy.RequireAuthenticatedUser());
         options.AddPolicy("RequireTenantAdmin", policy =>
-            policy.RequireRole("TenantAdmin"));
+            policy.RequireAuthenticatedUser());
         options.AddPolicy("RequireSurveyViewer", policy =>
-            policy.RequireRole("SurveyViewer", "SurveyCreator", "TenantAdmin"));
+            policy.RequireAuthenticatedUser());
     });
 
     // --- Application & Infrastructure layers ---

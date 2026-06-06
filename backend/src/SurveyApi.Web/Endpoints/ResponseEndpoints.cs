@@ -72,7 +72,7 @@ public static class ResponseEndpoints
 
         // --- Authenticated response retrieval ---
         var authGroup = app.MapGroup("/api/v1/surveys/{surveyId:guid}/responses")
-            .RequireAuthorization("RequireSurveyViewer")
+            .RequireAuthorization()
             .WithTags("Responses");
 
         // GET: List responses for a survey (paginated)

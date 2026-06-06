@@ -18,7 +18,7 @@ public static class QuestionEndpoints
         // - Conditional logic configuration
 
         var group = app.MapGroup("/api/v1/surveys/{surveyId:guid}/questions")
-            .RequireAuthorization("RequireSurveyCreator")
+            .RequireAuthorization()
             .WithTags("Questions");
 
         // Placeholder for future individual question management
